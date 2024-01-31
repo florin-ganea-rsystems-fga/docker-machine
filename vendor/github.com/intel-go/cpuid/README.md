@@ -63,7 +63,7 @@ Most data is available with simple variables:
 * **DisplayFamily uint32** Processor family
 * **DisplayModel uint32** Processor model
 * **CacheLineSize uint32** Cache line size in bytes
-* **MaxLogocalCPUId uint32** Maximum number of addressable IDs for logical processors in this physical package
+* **MaxLogicalCPUId uint32** Maximum number of addressable IDs for logical processors in this physical package
 * **InitialAPICId uint32** Initial APIC ID
 * **CacheDescriptors []CacheDescriptor** Cache descriptor's array
 
@@ -186,6 +186,7 @@ if EnabledAVX && HasFeature(AVX) {
   > **AVX512VL**                AVX-512 Vector Length Extensions<br/>
   > **PREFETCHWT1**             PREFETCHWT1 instruction<br/>
   > **AVX512VBMI**              AVX-512 Vector Bit Manipulation Instructions<br/>
+  > **AVX512VBMI2**             AVX-512 Vector Bit Manipulation Instructions, Version 2<br/>
 
 * **func HasExtraFeature(feature uint64) bool**
   > **LAHF_LM**           LahfSahf LAHF and SAHF instruction support in 64-bit mod<br/>

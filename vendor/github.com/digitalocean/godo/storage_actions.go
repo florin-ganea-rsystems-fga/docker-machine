@@ -3,14 +3,14 @@ package godo
 import (
 	"context"
 	"fmt"
+	"net/http"
 )
 
 // StorageActionsService is an interface for interfacing with the
 // storage actions endpoints of the Digital Ocean API.
-// See: https://developers.digitalocean.com/documentation/v2#storage-actions
+// See: https://docs.digitalocean.com/reference/api/api-reference/#tag/Block-Storage-Actions
 type StorageActionsService interface {
 	Attach(ctx context.Context, volumeID string, dropletID int) (*Action, *Response, error)
-	Detach(ctx context.Context, volumeID string) (*Action, *Response, error)
 	DetachByDropletID(ctx context.Context, volumeID string, dropletID int) (*Action, *Response, error)
 	Get(ctx context.Context, volumeID string, actionID int) (*Action, *Response, error)
 	List(ctx context.Context, volumeID string, opt *ListOptions) ([]Action, *Response, error)
@@ -23,7 +23,7 @@ type StorageActionsServiceOp struct {
 	client *Client
 }
 
-// StorageAttachment represents the attachement of a block storage
+// StorageAttachment represents the attachment of a block storage
 // volume to a specific Droplet under the device name.
 type StorageAttachment struct {
 	DropletID int `json:"droplet_id"`
@@ -34,14 +34,6 @@ func (s *StorageActionsServiceOp) Attach(ctx context.Context, volumeID string, d
 	request := &ActionRequest{
 		"type":       "attach",
 		"droplet_id": dropletID,
-	}
-	return s.doAction(ctx, volumeID, request)
-}
-
-// Detach a storage volume from a Droplet.
-func (s *StorageActionsServiceOp) Detach(ctx context.Context, volumeID string) (*Action, *Response, error) {
-	request := &ActionRequest{
-		"type": "detach",
 	}
 	return s.doAction(ctx, volumeID, request)
 }
@@ -85,13 +77,13 @@ func (s *StorageActionsServiceOp) Resize(ctx context.Context, volumeID string, s
 func (s *StorageActionsServiceOp) doAction(ctx context.Context, volumeID string, request *ActionRequest) (*Action, *Response, error) {
 	path := storageAllocationActionPath(volumeID)
 
-	req, err := s.client.NewRequest(ctx, "POST", path, request)
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, request)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	root := new(actionRoot)
-	resp, err := s.client.Do(req, root)
+	resp, err := s.client.Do(ctx, req, root)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -100,13 +92,13 @@ func (s *StorageActionsServiceOp) doAction(ctx context.Context, volumeID string,
 }
 
 func (s *StorageActionsServiceOp) get(ctx context.Context, path string) (*Action, *Response, error) {
-	req, err := s.client.NewRequest(ctx, "GET", path, nil)
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	root := new(actionRoot)
-	resp, err := s.client.Do(req, root)
+	resp, err := s.client.Do(ctx, req, root)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -115,18 +107,21 @@ func (s *StorageActionsServiceOp) get(ctx context.Context, path string) (*Action
 }
 
 func (s *StorageActionsServiceOp) list(ctx context.Context, path string) ([]Action, *Response, error) {
-	req, err := s.client.NewRequest(ctx, "GET", path, nil)
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	root := new(actionsRoot)
-	resp, err := s.client.Do(req, root)
+	resp, err := s.client.Do(ctx, req, root)
 	if err != nil {
 		return nil, resp, err
 	}
 	if l := root.Links; l != nil {
 		resp.Links = l
+	}
+	if m := root.Meta; m != nil {
+		resp.Meta = m
 	}
 
 	return root.Actions, resp, err
