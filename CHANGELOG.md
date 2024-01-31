@@ -1,5 +1,15 @@
 # Changelog
 
+# Untagged
+
+## General
+
+- Updated docker client to 25.0.1
+- Updated go to 1.18
+- Added go mod support
+- Cleanup (e.g. removed vendor directory; needs `go mod vendor` to restore)
+- Fixed the CLI test for `--storage-path` flag
+
 # 0.16.0 (2018-11-08)
 
 ### General
