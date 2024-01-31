@@ -3,6 +3,7 @@ package godo
 import (
 	"context"
 	"fmt"
+	"net/http"
 )
 
 const (
@@ -15,14 +16,14 @@ const (
 	ActionCompleted = "completed"
 )
 
-// ActionsService handles communction with action related methods of the
-// DigitalOcean API: https://developers.digitalocean.com/documentation/v2#actions
+// ActionsService handles communication with action related methods of the
+// DigitalOcean API: https://docs.digitalocean.com/reference/api/api-reference/#tag/Actions
 type ActionsService interface {
 	List(context.Context, *ListOptions) ([]Action, *Response, error)
 	Get(context.Context, int) (*Action, *Response, error)
 }
 
-// ActionsServiceOp handles communition with the image action related methods of the
+// ActionsServiceOp handles communication with the image action related methods of the
 // DigitalOcean API.
 type ActionsServiceOp struct {
 	client *Client
@@ -33,6 +34,7 @@ var _ ActionsService = &ActionsServiceOp{}
 type actionsRoot struct {
 	Actions []Action `json:"actions"`
 	Links   *Links   `json:"links"`
+	Meta    *Meta    `json:"meta"`
 }
 
 type actionRoot struct {
@@ -60,18 +62,21 @@ func (s *ActionsServiceOp) List(ctx context.Context, opt *ListOptions) ([]Action
 		return nil, nil, err
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", path, nil)
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	root := new(actionsRoot)
-	resp, err := s.client.Do(req, root)
+	resp, err := s.client.Do(ctx, req, root)
 	if err != nil {
 		return nil, resp, err
 	}
 	if l := root.Links; l != nil {
 		resp.Links = l
+	}
+	if m := root.Meta; m != nil {
+		resp.Meta = m
 	}
 
 	return root.Actions, resp, err
@@ -84,13 +89,13 @@ func (s *ActionsServiceOp) Get(ctx context.Context, id int) (*Action, *Response,
 	}
 
 	path := fmt.Sprintf("%s/%d", actionsBasePath, id)
-	req, err := s.client.NewRequest(ctx, "GET", path, nil)
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	root := new(actionRoot)
-	resp, err := s.client.Do(req, root)
+	resp, err := s.client.Do(ctx, req, root)
 	if err != nil {
 		return nil, resp, err
 	}

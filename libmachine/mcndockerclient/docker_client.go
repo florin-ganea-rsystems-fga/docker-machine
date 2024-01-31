@@ -1,45 +1,54 @@
 package mcndockerclient
 
 import (
+	"context"
 	"fmt"
-
-	"github.com/docker/machine/libmachine/cert"
-	"github.com/samalba/dockerclient"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // DockerClient creates a docker client for a given host.
-func DockerClient(dockerHost DockerHost) (*dockerclient.DockerClient, error) {
+func DockerClient(dockerHost DockerHost) (*client.Client, error) {
 	url, err := dockerHost.URL()
 	if err != nil {
 		return nil, err
 	}
 
-	tlsConfig, err := cert.ReadTLSConfig(url, dockerHost.AuthOptions())
-	if err != nil {
-		return nil, fmt.Errorf("Unable to read TLS config: %s", err)
-	}
+	//tlsConfig, err := cert.ReadTLSConfig(url, dockerHost.AuthOptions())
+	//if err != nil {
+	//	return nil, fmt.Errorf("Unable to read TLS config: %s", err)
+	//}
 
-	return dockerclient.NewDockerClient(url, tlsConfig)
+	return client.NewClientWithOpts(client.WithHost(url),
+		client.WithTLSClientConfig(dockerHost.AuthOptions().CaCertPath,
+			dockerHost.AuthOptions().ClientCertPath,
+			dockerHost.AuthOptions().ClientKeyPath))
 }
 
 // CreateContainer creates a docker container.
-func CreateContainer(dockerHost DockerHost, config *dockerclient.ContainerConfig, name string) error {
-	docker, err := DockerClient(dockerHost)
+func CreateContainer(dockerHost DockerHost, config *container.Config, containerHostConfig *container.HostConfig, name string) error {
+	dockerCli, err := DockerClient(dockerHost)
 	if err != nil {
 		return err
 	}
 
-	if err = docker.PullImage(config.Image, nil); err != nil {
+	if _, err = dockerCli.ImagePull(context.Background(), config.Image, types.ImagePullOptions{All: true}); err != nil {
 		return fmt.Errorf("Unable to pull image: %s", err)
 	}
 
-	var authConfig *dockerclient.AuthConfig
-	containerID, err := docker.CreateContainer(config, name, authConfig)
+	//var containerConfig container.Config
+	//var containerHostConfig container.HostConfig
+	var containerNetworkingConfig network.NetworkingConfig
+	var platform v1.Platform
+	containerResponse, err := dockerCli.ContainerCreate(context.Background(), config, containerHostConfig, &containerNetworkingConfig, &platform, name)
 	if err != nil {
 		return fmt.Errorf("Error while creating container: %s", err)
 	}
 
-	if err = docker.StartContainer(containerID, &config.HostConfig); err != nil {
+	if err = dockerCli.ContainerStart(context.Background(), containerResponse.ID, types.ContainerStartOptions{}); err != nil {
 		return fmt.Errorf("Error while starting container: %s", err)
 	}
 

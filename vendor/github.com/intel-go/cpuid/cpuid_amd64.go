@@ -3,10 +3,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package cpuid provides access to the information available
-// through the CPUID instruction.
-// All information is gathered during package initialization phase
-// so package's public interface doesn't call CPUID instruction.
 package cpuid
 
 func cpuid_low(arg1, arg2 uint32) (eax, ebx, ecx, edx uint32) // implemented in cpuidlow_amd64.s
@@ -30,6 +26,7 @@ func detectFeatures() {
 	leaf0x80000004()
 	leaf0x80000005()
 	leaf0x80000006()
+	leaf0x8000001f()
 
 	if HasFeature(OSXSAVE) {
 		eax, _ := xgetbv_low(0)
@@ -41,6 +38,14 @@ func detectFeatures() {
 		}
 	}
 }
+
+// AMD Memory encryption capabilities
+const (
+	AMD_SME = iota
+	AMD_SEV
+	AMD_PAGE_FLUSH_MSR
+	AMD_SEV_ES
+)
 
 var leaf02Names = [...]string{
 	"NULL",
@@ -92,7 +97,7 @@ func leaf1() {
 	// Parse EBX
 	brandIndex = ebx & 0xFF
 	CacheLineSize = ((ebx >> 8) & 0xFF) << 3
-	MaxLogocalCPUId = (ebx >> 16) & 0xFF
+	MaxLogicalCPUId = (ebx >> 16) & 0xFF
 	InitialAPICId = (ebx >> 24)
 
 	// Parse ECX & EDX not needed. Ask through HasFeature function
@@ -460,6 +465,36 @@ func leaf0x80000006() {
 				-1,
 				int(L3LinesPerTag),
 			})
+	}
+}
+
+// AMD Encrypted Memory Capabilities
+// Details found in AMD64 Architecture Programmer’s Manual Volume 3, section E.4.17
+func leaf0x8000001f() {
+
+	if maxExtendedInputValue < 0x8000001f {
+		return
+	}
+
+	if brandId != AMD {
+		return
+	}
+
+	eax, ebx, ecx, edx := cpuid_low(0x8000001f, 0)
+
+	// Parse EAX
+	amdMemEncryptFeatureFlags = eax
+
+	if HasAMDMemEncryptFeature(AMD_SME) || HasAMDMemEncryptFeature(AMD_SEV) {
+		// Parse EBX
+		AMDMemEncrypt.CBitPosition = ebx & 0x3F
+		AMDMemEncrypt.PhysAddrReduction = (ebx >> 6) & 0x3F
+
+		// Parse ECX
+		AMDMemEncrypt.NumEncryptedGuests = ecx
+
+		// Parse EDX
+		AMDMemEncrypt.MinSevNoEsAsid = edx
 	}
 }
 
