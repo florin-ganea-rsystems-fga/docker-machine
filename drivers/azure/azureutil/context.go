@@ -1,8 +1,8 @@
 package azureutil
 
 import (
-	"github.com/Azure/azure-sdk-for-go/arm/network"
-	"github.com/Azure/azure-sdk-for-go/arm/storage"
+	network "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
+	storage "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 )
 
 // DeploymentContext contains references to various sources created and then
@@ -16,5 +16,5 @@ type DeploymentContext struct {
 	NetworkInterfaceID     string
 	SSHPublicKey           string
 	AvailabilitySetID      string
-	FirewallRules          *[]network.SecurityRule
+	FirewallRules          []*network.SecurityRule
 }

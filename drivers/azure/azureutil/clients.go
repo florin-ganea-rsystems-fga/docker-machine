@@ -2,15 +2,15 @@ package azureutil
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/docker/machine/version"
 
-	"github.com/Azure/azure-sdk-for-go/arm/compute"
-	"github.com/Azure/azure-sdk-for-go/arm/network"
-	"github.com/Azure/azure-sdk-for-go/arm/resources/resources"
-	"github.com/Azure/azure-sdk-for-go/arm/resources/subscriptions"
-	"github.com/Azure/azure-sdk-for-go/arm/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	compute "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
+	network "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
+	resources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	subscriptions "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
+	storage "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"github.com/Azure/go-autorest/autorest"
 )
 
@@ -23,115 +23,60 @@ func oauthClient() autorest.Client {
 	c := autorest.NewClientWithUserAgent(fmt.Sprintf("docker-machine/%s", version.Version))
 	c.RequestInspector = withInspection()
 	c.ResponseInspector = byInspecting()
-	// TODO set user agent
 	return c
 }
 
-func subscriptionsClient(baseURI string) subscriptions.Client {
-	c := subscriptions.NewClientWithBaseURI(baseURI) // used only for unauthenticated requests for generic subs IDs
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func subscriptionsClient(credential azcore.TokenCredential) *subscriptions.SubscriptionClient {
+	c, _ := subscriptions.NewSubscriptionClient(credential, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) providersClient() resources.ProvidersClient {
-	c := resources.NewProvidersClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) providersClient() *resources.ProvidersClient {
+	c, _ := resources.NewProvidersClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) resourceGroupsClient() resources.GroupsClient {
-	c := resources.NewGroupsClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) resourceGroupsClient() *resources.ResourceGroupsClient {
+	c, _ := resources.NewResourceGroupsClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) securityGroupsClient() network.SecurityGroupsClient {
-	c := network.NewSecurityGroupsClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) securityGroupsClient() *network.SecurityGroupsClient {
+	c, _ := network.NewSecurityGroupsClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) virtualNetworksClient() network.VirtualNetworksClient {
-	c := network.NewVirtualNetworksClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) virtualNetworksClient() *network.VirtualNetworksClient {
+	c, _ := network.NewVirtualNetworksClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) subnetsClient() network.SubnetsClient {
-	c := network.NewSubnetsClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) subnetsClient() *network.SubnetsClient {
+	c, _ := network.NewSubnetsClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) networkInterfacesClient() network.InterfacesClient {
-	c := network.NewInterfacesClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) networkInterfacesClient() *network.InterfacesClient {
+	c, _ := network.NewInterfacesClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) publicIPAddressClient() network.PublicIPAddressesClient {
-	c := network.NewPublicIPAddressesClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) publicIPAddressClient() *network.PublicIPAddressesClient {
+	c, _ := network.NewPublicIPAddressesClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) storageAccountsClient() storage.AccountsClient {
-	c := storage.NewAccountsClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) storageAccountsClient() *storage.AccountsClient {
+	c, _ := storage.NewAccountsClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) virtualMachinesClient() compute.VirtualMachinesClient {
-	c := compute.NewVirtualMachinesClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) virtualMachinesClient() *compute.VirtualMachinesClient {
+	c, _ := compute.NewVirtualMachinesClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }
 
-func (a AzureClient) availabilitySetsClient() compute.AvailabilitySetsClient {
-	c := compute.NewAvailabilitySetsClientWithBaseURI(a.env.ResourceManagerEndpoint, a.subscriptionID)
-	c.Authorizer = a.auth
-	c.Client.UserAgent += fmt.Sprintf(";docker-machine/%s", version.Version)
-	c.RequestInspector = withInspection()
-	c.ResponseInspector = byInspecting()
-	c.PollingDelay = time.Second * 5
+func (a AzureClient) availabilitySetsClient() *compute.AvailabilitySetsClient {
+	c, _ := compute.NewAvailabilitySetsClient(a.subscriptionID, a.auth, &arm.ClientOptions{})
 	return c
 }

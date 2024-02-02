@@ -2,12 +2,11 @@ package rackspace
 
 import (
 	"fmt"
-
 	"github.com/docker/machine/drivers/openstack"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/version"
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/rackspace"
+	"github.com/gophercloud/gophercloud"
+	gopenstack "github.com/gophercloud/gophercloud/openstack"
 )
 
 func unsupportedOpErr(operation string) error {
@@ -33,17 +32,17 @@ func (c *Client) Authenticate(d *openstack.Driver) error {
 	apiKey := c.driver.APIKey
 	opts := gophercloud.AuthOptions{
 		Username: d.Username,
-		APIKey:   apiKey,
+		Password: apiKey,
 	}
 
-	provider, err := rackspace.NewClient(rackspace.RackspaceUSIdentity)
+	provider, err := gopenstack.NewClient(d.AuthUrl)
 	if err != nil {
 		return err
 	}
 
 	provider.UserAgent.Prepend(fmt.Sprintf("docker-machine/v%d", version.APIVersion))
 
-	err = rackspace.Authenticate(provider, opts)
+	err = gopenstack.Authenticate(provider, opts)
 	if err != nil {
 		return err
 	}
