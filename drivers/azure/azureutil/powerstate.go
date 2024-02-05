@@ -5,7 +5,7 @@ import (
 
 	"github.com/docker/machine/libmachine/log"
 
-	"github.com/Azure/azure-sdk-for-go/arm/compute"
+	compute "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
@@ -52,11 +52,11 @@ func powerStateFromInstanceView(instanceView *compute.VirtualMachineInstanceView
 	if instanceView == nil {
 		log.Debug("Retrieved nil instance view.")
 		return Unknown
-	} else if instanceView.Statuses == nil || len(*instanceView.Statuses) == 0 {
+	} else if instanceView.Statuses == nil || len(instanceView.Statuses) == 0 {
 		log.Debug("Retrieved nil or empty instanceView.statuses.")
 		return Unknown
 	}
-	statuses := *instanceView.Statuses
+	statuses := instanceView.Statuses
 
 	// Filter statuses whose "code" starts with "PowerState/"
 	var s *compute.InstanceViewStatus
@@ -64,7 +64,7 @@ func powerStateFromInstanceView(instanceView *compute.VirtualMachineInstanceView
 		log.Debugf("Matching pattern for code=%q", to.String(v.Code))
 		if strings.HasPrefix(to.String(v.Code), powerStateCodePrefix) {
 			log.Debug("Power state found.")
-			s = &v
+			s = v
 			break
 		}
 	}

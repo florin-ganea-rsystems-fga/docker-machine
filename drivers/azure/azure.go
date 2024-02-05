@@ -15,7 +15,7 @@ import (
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/state"
 
-	"github.com/Azure/azure-sdk-for-go/arm/storage"
+	storage "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 	defaultAzureVNet            = "docker-machine-vnet"
 	defaultAzureSubnet          = "docker-machine"
 	defaultAzureSubnetPrefix    = "192.168.0.0/16"
-	defaultStorageType          = string(storage.StandardLRS)
+	defaultStorageType          = string(storage.SKUNameStandardLRS)
 	defaultAzureAvailabilitySet = "docker-machine"
 )
 
@@ -54,6 +54,7 @@ const (
 	flAzureDNSLabel        = "azure-dns"
 	flAzureStorageType     = "azure-storage-type"
 	flAzureCustomData      = "azure-custom-data"
+	flAzureTenantID        = "azure-tenant-id"
 	flAzureClientID        = "azure-client-id"
 	flAzureClientSecret    = "azure-client-secret"
 )
@@ -67,6 +68,7 @@ const (
 type Driver struct {
 	*drivers.BaseDriver
 
+	TenantID     string
 	ClientID     string // service principal account name
 	ClientSecret string // service principal account password
 
@@ -224,6 +226,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage: "Make the specified port number accessible from the Internet",
 		},
 		mcnflag.StringFlag{
+			Name:   flAzureTenantID,
+			Usage:  "Azure Service Principal Tenant ID (optional, browser auth is used if not specified)",
+			EnvVar: "AZURE_TENANT_ID",
+		},
+		mcnflag.StringFlag{
 			Name:   flAzureClientID,
 			Usage:  "Azure Service Principal Account ID (optional, browser auth is used if not specified)",
 			EnvVar: "AZURE_CLIENT_ID",
@@ -277,6 +284,7 @@ func (d *Driver) SetConfigFromFlags(fl drivers.DriverOptions) error {
 	d.DNSLabel = fl.String(flAzureDNSLabel)
 	d.CustomDataFile = fl.String(flAzureCustomData)
 
+	d.TenantID = fl.String(flAzureTenantID)
 	d.ClientID = fl.String(flAzureClientID)
 	d.ClientSecret = fl.String(flAzureClientSecret)
 
@@ -327,7 +335,7 @@ func (d *Driver) PreCreateCheck() (err error) {
 	}
 
 	// NOTE(ahmetalpbalkan) we could have done more checks here but Azure often
-	// returns meaningful error messages and it would be repeating the backend
+	// returns meaningful error messages, and it would be repeating the backend
 	// logic on the client side. Some examples:
 	//   - Deployment of a machine to an existing Virtual Network fails if
 	//     virtual network is in a different region.
@@ -340,7 +348,7 @@ func (d *Driver) PreCreateCheck() (err error) {
 // Create creates the virtual machine.
 func (d *Driver) Create() error {
 	// NOTE(ahmetalpbalkan): We can probably parallelize the sh*t out of this.
-	// However that would lead to a concurrency logic and while creation of a
+	// However, that would lead to a concurrency logic and while creation of a
 	// resource fails, other ones would be kicked off, which could lead to a
 	// resource leak. This is slower but safer.
 	c, err := d.newAzureClient()
@@ -384,7 +392,7 @@ func (d *Driver) Create() error {
 		d.ctx.PublicIPAddressID, d.ctx.SubnetID, d.ctx.NetworkSecurityGroupID, d.PrivateIPAddr); err != nil {
 		return err
 	}
-	if err := c.CreateStorageAccount(d.ctx, d.ResourceGroup, d.Location, storage.SkuName(d.StorageType)); err != nil {
+	if err := c.CreateStorageAccount(d.ctx, d.ResourceGroup, d.Location, storage.SKUName(d.StorageType)); err != nil {
 		return err
 	}
 	if err := d.generateSSHKey(d.ctx); err != nil {

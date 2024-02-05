@@ -11,19 +11,19 @@ import (
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/version"
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
-	compute_ips "github.com/rackspace/gophercloud/openstack/compute/v2/extensions/floatingip"
-	"github.com/rackspace/gophercloud/openstack/compute/v2/extensions/keypairs"
-	"github.com/rackspace/gophercloud/openstack/compute/v2/extensions/startstop"
-	"github.com/rackspace/gophercloud/openstack/compute/v2/flavors"
-	"github.com/rackspace/gophercloud/openstack/compute/v2/images"
-	"github.com/rackspace/gophercloud/openstack/compute/v2/servers"
-	"github.com/rackspace/gophercloud/openstack/identity/v2/tenants"
-	"github.com/rackspace/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
-	"github.com/rackspace/gophercloud/openstack/networking/v2/networks"
-	"github.com/rackspace/gophercloud/openstack/networking/v2/ports"
-	"github.com/rackspace/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/floatingips"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/startstop"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/images"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/openstack/identity/v2/tenants"
+	l3floatingips "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/pagination"
 )
 
 type Client interface {
@@ -68,7 +68,7 @@ func (c *GenericClient) CreateInstance(d *Driver) (string, error) {
 		UserData:         d.UserData,
 		SecurityGroups:   d.SecurityGroups,
 		AvailabilityZone: d.AvailabilityZone,
-		ConfigDrive:      d.ConfigDrive,
+		ConfigDrive:      &d.ConfigDrive,
 		Metadata:         d.GetMetadata(),
 	}
 	if d.NetworkId != "" {
@@ -136,7 +136,7 @@ func (c *GenericClient) StopInstance(d *Driver) error {
 }
 
 func (c *GenericClient) RestartInstance(d *Driver) error {
-	if result := servers.Reboot(c.Compute, d.MachineId, servers.SoftReboot); result.Err != nil {
+	if result := servers.Reboot(c.Compute, d.MachineId, servers.RebootOpts{Type: servers.SoftReboot}); result.Err != nil {
 		return result.Err
 	}
 	return nil
@@ -307,7 +307,7 @@ func (c *GenericClient) GetTenantID(d *Driver) (string, error) {
 }
 
 func (c *GenericClient) GetPublicKey(keyPairName string) ([]byte, error) {
-	kp, err := keypairs.Get(c.Compute, keyPairName).Extract()
+	kp, err := keypairs.Get(c.Compute, keyPairName, keypairs.GetOpts{}).Extract()
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +326,7 @@ func (c *GenericClient) CreateKeyPair(d *Driver, name string, publicKey string) 
 }
 
 func (c *GenericClient) DeleteKeyPair(d *Driver, name string) error {
-	if result := keypairs.Delete(c.Compute, name); result.Err != nil {
+	if result := keypairs.Delete(c.Compute, name, keypairs.DeleteOpts{}); result.Err != nil {
 		return result.Err
 	}
 	return nil
@@ -349,7 +349,7 @@ func (c *GenericClient) AssignFloatingIP(d *Driver, floatingIP *FloatingIP) erro
 
 func (c *GenericClient) assignNovaFloatingIP(d *Driver, floatingIP *FloatingIP) error {
 	if floatingIP.Ip == "" {
-		f, err := compute_ips.Create(c.Compute, compute_ips.CreateOpts{
+		f, err := floatingips.Create(c.Compute, floatingips.CreateOpts{
 			Pool: d.FloatingIpPool,
 		}).Extract()
 		if err != nil {
@@ -358,7 +358,7 @@ func (c *GenericClient) assignNovaFloatingIP(d *Driver, floatingIP *FloatingIP) 
 		floatingIP.Ip = f.IP
 		floatingIP.Pool = f.Pool
 	}
-	return compute_ips.Associate(c.Compute, d.MachineId, floatingIP.Ip).Err
+	return floatingips.AssociateInstance(c.Compute, d.MachineId, floatingips.AssociateOpts{FloatingIP: floatingIP.Ip}).Err
 }
 
 func (c *GenericClient) assignNeutronFloatingIP(d *Driver, floatingIP *FloatingIP) error {
@@ -367,7 +367,7 @@ func (c *GenericClient) assignNeutronFloatingIP(d *Driver, floatingIP *FloatingI
 		return err
 	}
 	if floatingIP.Id == "" {
-		f, err := floatingips.Create(c.Network, floatingips.CreateOpts{
+		f, err := l3floatingips.Create(c.Network, l3floatingips.CreateOpts{
 			FloatingNetworkID: d.FloatingIpPoolId,
 			PortID:            portID,
 		}).Extract()
@@ -380,8 +380,8 @@ func (c *GenericClient) assignNeutronFloatingIP(d *Driver, floatingIP *FloatingI
 		floatingIP.PortId = f.PortID
 		return nil
 	}
-	_, err = floatingips.Update(c.Network, floatingIP.Id, floatingips.UpdateOpts{
-		PortID: portID,
+	_, err = l3floatingips.Update(c.Network, floatingIP.Id, l3floatingips.UpdateOpts{
+		PortID: &portID,
 	}).Extract()
 	if err != nil {
 		return err
@@ -397,12 +397,12 @@ func (c *GenericClient) GetFloatingIPs(d *Driver) ([]FloatingIP, error) {
 }
 
 func (c *GenericClient) getNovaNetworkFloatingIPs(d *Driver) ([]FloatingIP, error) {
-	pager := compute_ips.List(c.Compute)
+	pager := floatingips.List(c.Compute)
 
 	ips := []FloatingIP{}
 	err := pager.EachPage(func(page pagination.Page) (continue_paging bool, err error) {
 		continue_paging, err = true, nil
-		ipListing, err := compute_ips.ExtractFloatingIPs(page)
+		ipListing, err := floatingips.ExtractFloatingIPs(page)
 
 		for _, ip := range ipListing {
 			if ip.InstanceID == "" && ip.Pool == d.FloatingIpPool {
@@ -423,14 +423,14 @@ func (c *GenericClient) getNeutronNetworkFloatingIPs(d *Driver) ([]FloatingIP, e
 		"FloatingNetworkId": d.FloatingIpPoolId,
 		"TenantID":          d.TenantId,
 	})
-	pager := floatingips.List(c.Network, floatingips.ListOpts{
+	pager := l3floatingips.List(c.Network, l3floatingips.ListOpts{
 		FloatingNetworkID: d.FloatingIpPoolId,
 		TenantID:          d.TenantId,
 	})
 
 	ips := []FloatingIP{}
 	err := pager.EachPage(func(page pagination.Page) (bool, error) {
-		floatingipList, err := floatingips.ExtractFloatingIPs(page)
+		floatingipList, err := l3floatingips.ExtractFloatingIPs(page)
 		if err != nil {
 			return false, err
 		}
@@ -497,7 +497,7 @@ func (c *GenericClient) InitIdentityClient(d *Driver) error {
 		return nil
 	}
 
-	identity := openstack.NewIdentityV2(c.Provider)
+	identity, _ := openstack.NewIdentityV2(c.Provider, gophercloud.EndpointOpts{})
 	c.Identity = identity
 	return nil
 }

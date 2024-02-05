@@ -35,7 +35,7 @@ func CreateContainer(dockerHost DockerHost, config *container.Config, containerH
 		return err
 	}
 
-	if _, err = dockerCli.ImagePull(context.Background(), config.Image, types.ImagePullOptions{All: true}); err != nil {
+	if _, err = dockerCli.ImagePull(context.TODO(), config.Image, types.ImagePullOptions{All: true}); err != nil {
 		return fmt.Errorf("Unable to pull image: %s", err)
 	}
 
@@ -43,12 +43,12 @@ func CreateContainer(dockerHost DockerHost, config *container.Config, containerH
 	//var containerHostConfig container.HostConfig
 	var containerNetworkingConfig network.NetworkingConfig
 	var platform v1.Platform
-	containerResponse, err := dockerCli.ContainerCreate(context.Background(), config, containerHostConfig, &containerNetworkingConfig, &platform, name)
+	containerResponse, err := dockerCli.ContainerCreate(context.TODO(), config, containerHostConfig, &containerNetworkingConfig, &platform, name)
 	if err != nil {
 		return fmt.Errorf("Error while creating container: %s", err)
 	}
 
-	if err = dockerCli.ContainerStart(context.Background(), containerResponse.ID, types.ContainerStartOptions{}); err != nil {
+	if err = dockerCli.ContainerStart(context.TODO(), containerResponse.ID, types.ContainerStartOptions{}); err != nil {
 		return fmt.Errorf("Error while starting container: %s", err)
 	}
 

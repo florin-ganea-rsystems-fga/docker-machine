@@ -4,11 +4,14 @@
 
 ## General
 
-- Updated docker client to 25.0.1
-- Updated go to 1.18
-- Added go mod support
+- Updated docker client to v25.0.2
+- Updated Azure SDK to v68.0.0
+- Updated `go` to v1.21
+- Added `go mod` support
 - Cleanup (e.g. removed vendor directory; needs `go mod vendor` to restore)
 - Fixed the CLI test for `--storage-path` flag
+- Changed from `codegangsta/cli` to `urfave/cli`
+- Updated `gophercloud` v1.9.0
 
 # 0.16.0 (2018-11-08)
 

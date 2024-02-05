@@ -7,7 +7,6 @@ import (
 
 	"path/filepath"
 
-	"github.com/codegangsta/cli"
 	"github.com/docker/machine/commands"
 	"github.com/docker/machine/commands/mcndirs"
 	"github.com/docker/machine/drivers/amazonec2"
@@ -29,6 +28,7 @@ import (
 	"github.com/docker/machine/libmachine/drivers/plugin/localbinary"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/version"
+	"github.com/urfave/cli"
 )
 
 var AppHelpTemplate = `Usage: {{.Name}} {{if .Flags}}[OPTIONS] {{end}}COMMAND [arg...]
